@@ -1,0 +1,43 @@
+---
+- name: Deploy Node.js App
+  hosts: webservers
+  become: yes
+  vars:
+    repo_url: "https://github.com/Amey78/node-app.git"
+    app_dir: "/opt/node-app"
+    node_version: "18"
+    app_file: "app.js"
+
+  tasks:
+    - name: Install git and curl
+      apt:
+        name:
+          - git
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Install Node.js
+      shell: curl -fsSL https://deb.nodesource.com/setup_{{ node_version }}.x | bash - && apt install -y nodejs
+      args:
+        creates: /usr/bin/node
+
+    - name: Clone the repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+
+    - name: Install npm packages
+      command: npm install
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: Install pm2
+      command: npm install -g pm2
+      args:
+        creates: /usr/bin/pm2
+
+    - name: Start the app
+      shell: pm2 restart node-app || pm2 start {{ app_file }} --name node-app
+      args:
+        chdir: "{{ app_dir }}"
